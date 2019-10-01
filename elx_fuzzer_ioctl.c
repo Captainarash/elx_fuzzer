@@ -56,13 +56,16 @@ static void __exit elx_fuzzer_exit(void)
 	pr_info("%s: %s module is unloaded\n", ELX_FUZZER_MODULE_NAME, __func__);
 	return;
 }
-ssize_t elx_fuzzer_read(struct file *filep, char __user *outbuf, size_t size, loff_t *offset)
+
+ssize_t elx_fuzzer_read(struct file *filep, char __user *outbuf, size_t size,
+	loff_t *offset)
 {
 	pr_info("%s: %s\n", ELX_FUZZER_MODULE_NAME, __func__);
 	return 0;
 }
 
-ssize_t elx_fuzzer_write(struct file *filep, const char __user *inbuf, size_t size, loff_t *offset)
+ssize_t elx_fuzzer_write(struct file *filep, const char __user *inbuf,
+	size_t size, loff_t *offset)
 {
 	pr_info("%s: %s\n", ELX_FUZZER_MODULE_NAME, __func__);
 	return 0;
@@ -71,23 +74,49 @@ ssize_t elx_fuzzer_write(struct file *filep, const char __user *inbuf, size_t si
 long elx_fuzzer_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
 	unsigned int target = cmd;
+	struct elx_args_s elx_args = {0};
+	struct smc_args_s *smc_args = 0;
+	uint64_t i;
+
 	pr_info("%s: %s\n", ELX_FUZZER_MODULE_NAME, __func__);
+
+	if (copy_from_user(&elx_args, (__user *)arg, sizeof(struct elx_args_s))) {
+		pr_info("%s: %s error while filling elx_args struct\n", \
+			ELX_FUZZER_MODULE_NAME, __func__);
+			return -1;
+	}
+
+	/**	if there is no argument or the number of arguments are more than 15
+	**	reject the request, because it doesn't make any sense **/
+	if (elx_args.num_of_args == 0 || elx_args.num_of_args > 0xF) {
+		pr_info("%s: %s num_of_args doesn\'t make sense!\n", \
+			ELX_FUZZER_MODULE_NAME, __func__);
+			return -1;
+	}
+
+	smc_args = (struct smc_args_s *)kmalloc(elx_args.num_of_args * sizeof(struct smc_args_s), GFP_KERNEL);
+	if(!smc_args){
+		pr_info("%s: %s can\'t allocate memory for smc args array!\n", \
+			ELX_FUZZER_MODULE_NAME, __func__);
+			return -1;
+	}
+
+	if (copy_from_user(smc_args, elx_args.args, elx_args.num_of_args * sizeof(struct smc_args_s))) {
+		pr_info("%s: %s error while copying smc_args from userspace\n", \
+			ELX_FUZZER_MODULE_NAME, __func__);
+			return -1;
+	}
+
+	/**
+	** do the rest of the argument parsing and formward to tz.
+	**/
 
 	switch(target){
 		case KEPNG_SPECIFIC_OPS:
-			pr_info("%s: %s fuzzing kpeng specific operations\n", ELX_FUZZER_MODULE_NAME, __func__);
-			break;
-		case KPENG_TRAPPED_OPS:
-			pr_info("%s: %s fuzzing kpeng trapped operations in kpeng\n", ELX_FUZZER_MODULE_NAME, __func__);
 			break;
 		case QTEE_SMC_HANDLERS:
-			pr_info("%s: %s fuzzing qtee smc handlers\n", ELX_FUZZER_MODULE_NAME, __func__);
 			break;
 		case QTEE_APPLICATIONS:
-			pr_info("%s: %s fuzzing trustzone applications\n", ELX_FUZZER_MODULE_NAME, __func__);
-			break;
-		case QHEE_SPECIFIC_OPS:
-			pr_info("%s: %s fuzzing qhee specific operations\n", ELX_FUZZER_MODULE_NAME, __func__);
 			break;
 		default:
 			pr_info("%s: %s there is no default fuzzing option. choose a target.\n", ELX_FUZZER_MODULE_NAME, __func__);
