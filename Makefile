@@ -1,0 +1,1 @@
+obj-$(CONFIG_ELX_FUZZER)		+= elx_fuzzer_ioctl.o
