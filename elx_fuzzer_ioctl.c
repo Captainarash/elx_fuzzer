@@ -1,7 +1,17 @@
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/wait.h>
+#include <linux/poll.h>
+#include <linux/sched.h>
+#include <linux/kthread.h>
+#include <linux/proc_fs.h>
+#include <linux/debugfs.h>
+#include <linux/circ_buf.h>
+#include <linux/acpi.h>
+
 #include "elx_fuzzer_ioctl.h"
 
-
-static int elx_fuzzer_major_num;
+//static int elx_fuzzer_major_num;
 static struct cdev elx_fuzzer_cdev;
 struct file_operations elx_fuzzer_fops;
 static dev_t dev_num ;
@@ -19,17 +29,17 @@ static int __init elx_fuzzer_init(void)
 
 	cdev_init(&elx_fuzzer_cdev, &elx_fuzzer_fops);
 
-	if(cdev_add(&&elx_fuzzer_cdev, dev_num, 0))
+	if(cdev_add(&elx_fuzzer_cdev, dev_num, 0))
 	{
 		pr_info("%s: %s cdev_add() failed!\n", ELX_FUZZER_MODULE_NAME, __func__);
-		unregister_chrdev_region(&dev_num, 1);
+		unregister_chrdev_region(dev_num, 1);
 	}
 
 	if(IS_ERR(cls = class_create(THIS_MODULE, ELX_FUZZER_CLASS_NAME)))
 	{
 		pr_info("%s: %s class_create() failed\n", ELX_FUZZER_MODULE_NAME, __func__);
 		cdev_del(&elx_fuzzer_cdev);
-		unregister_chrdev_region(&dev_num, 1);
+		unregister_chrdev_region(dev_num, 1);
 		return 0;
 	}
 
@@ -39,7 +49,7 @@ static int __init elx_fuzzer_init(void)
 		pr_info("%s: %s class_create() failed\n", ELX_FUZZER_MODULE_NAME, __func__);
 		class_destroy(cls);
 		cdev_del(&elx_fuzzer_cdev);
-		unregister_chrdev_region(&dev_num, 1);
+		unregister_chrdev_region(dev_num, 1);
 	}
 
 	pr_info("%s: %s suncessfully initialized the driver!\n", ELX_FUZZER_MODULE_NAME, __func__);
@@ -49,10 +59,10 @@ static int __init elx_fuzzer_init(void)
 static void __exit elx_fuzzer_exit(void)
 {
 	pr_info("%s: %s unloading module...\n", ELX_FUZZER_MODULE_NAME, __func__);
-	device_destroy(dev);
+	device_destroy(cls, dev_num);
 	class_destroy(cls);
 	cdev_del(&elx_fuzzer_cdev);
-	unregister_chrdev_region(&dev_num, 1);
+	unregister_chrdev_region(dev_num, 1);
 	pr_info("%s: %s module is unloaded\n", ELX_FUZZER_MODULE_NAME, __func__);
 	return;
 }
@@ -76,11 +86,11 @@ long elx_fuzzer_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	unsigned int target = cmd;
 	struct elx_args_s elx_args = {0};
 	struct smc_args_s *smc_args = 0;
-	uint64_t i;
+	//uint64_t i;
 
 	pr_info("%s: %s\n", ELX_FUZZER_MODULE_NAME, __func__);
 
-	if (copy_from_user(&elx_args, (__user *)arg, sizeof(struct elx_args_s))) {
+	if (copy_from_user(&elx_args, (void __user *)arg, sizeof(struct elx_args_s))) {
 		pr_info("%s: %s error while filling elx_args struct\n", \
 			ELX_FUZZER_MODULE_NAME, __func__);
 			return -1;
@@ -112,7 +122,7 @@ long elx_fuzzer_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	**/
 
 	switch(target){
-		case KEPNG_SPECIFIC_OPS:
+		case KPENG_SPECIFIC_OPS:
 			break;
 		case QTEE_SMC_HANDLERS:
 			break;
@@ -126,17 +136,16 @@ long elx_fuzzer_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	return 0;
 }
 
-
-elx_fuzzer_fops = {
+struct file_operations elx_fuzzer_fops = {
 	.owner = THIS_MODULE,
-	.open = elx_fuzzer_open,
-	.read = elx_fuzzer_read,
-	.write = elx_fuzzer_write,
+//	.open = elx_fuzzer_open,
+//	.read = elx_fuzzer_read,
+//	.write = elx_fuzzer_write,
 	.unlocked_ioctl = elx_fuzzer_ioctl
 };
 
 module_init(elx_fuzzer_init);
 module_exit(elx_fuzzer_exit);
 MODULE_AUTHOR("Arash Tohidi");
-MODULE_LISENCE("GPL");
+//MODULE_LISENCE("GPL");
 MODULE_DESCRIPTION("A driver to simply fuzz the code living in higher exception levels");
