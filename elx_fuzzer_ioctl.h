@@ -15,9 +15,10 @@
 #define ELX_FUZZER_MODULE_PATH "/dev/elx_fuuzer"
 #define ELX_FUZZER_MODULE_NAME "elx_fuzzer"
 
-#define KPENG_SPECIFIC_OPS (0x1)
-#define QTEE_SMC_HANDLERS  (0x2)
-#define QTEE_APPLICATIONS  (0x3)
+#define KPENG_FUZZING     (0x80000000)
+#define QTEE_SMC_FUZZING  (0x00000000)
+
+#define ELX_TARGET_MASK     0x80000000
 
 static int __init elx_fuzzer_init(void);
 static void __exit elx_fuzzer_exit(void);

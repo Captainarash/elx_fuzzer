@@ -13,4 +13,6 @@ struct smc_args_s {
   uint64_t size;
 };
 
+#define MAX_ELX_SCM_ARGS (MAX_SCM_ARGS + 1)
+
 #endif /* _ELX_FUZZER_SMC_H_  */
