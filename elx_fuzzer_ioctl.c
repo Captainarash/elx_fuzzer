@@ -165,16 +165,7 @@ long elx_fuzzer_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 
 	/**
 	 ** have to make the final touches and call scm_call2()
-	 struct scm_desc {
-	 	u32 arginfo;
-	 	u64 args[MAX_SCM_ARGS];
-	 	u64 ret[MAX_SCM_RETS];
-
-		//private
-	 	void *extra_arg_buf;
-	 	u64 x5;
-	 };
-	 we also need to call dmac_flush_range() before calling scm_call2()
+	 ** we also need to call dmac_flush_range() before calling scm_call2()
 	 **/
 
 	desc.arginfo = arg_list[0];
