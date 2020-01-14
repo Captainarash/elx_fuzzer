@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     case 'i':
       printf("testcase: %s\n", optarg);
       in_file = strdup(optarg);
-      in_fd = get_test_case(in_file);
+      in_fd = get_tc(in_file);
       break;
     case 'm':
       printf("mutate: %s times\n", optarg);
