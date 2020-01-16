@@ -27,7 +27,6 @@ void usage(void)
 int main(int argc, char **argv)
 {
   int opt = 0;
-  int args_valid = 1;
   int in_fd = 0, out_fd = 0;
   int mutate = 0;
   char *in_file = 0;
@@ -64,11 +63,19 @@ int main(int argc, char **argv)
       break;
     }
   }
-  // optind is for the extra arguments
-  // which are not parsed
+
   for(; optind < argc; optind++) {
     printf("invalid arguments: %s\n", argv[optind]);
     return -1;
   }
+
+  if (in_fd) {
+    start_fuzzing(in_fd, mutate);
+  }
+
+  if (out_fd) {
+    // implement the logic to create a test case.
+  }
+
   return 0;
 }
