@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include "test_case_engine.h"
 #include "elx_err.h"
@@ -63,12 +64,13 @@ uint64_t parse_tlv_buf(struct elx_app_smc_args_s *tlv, uint64_t rem_sz)
   return (uint64_t)buf;
 }
 
-char *serialize_tc(char *tc_buf, size_t tc_sz)
+void *get_driver_buf(char *tc_buf, size_t tc_sz)
 {
   uint64_t *final_buf;
   struct elx_test_case_s *tc;
   size_t args_sz, rem_sz;
   struct elx_app_smc_args_s *curr_tlv;
+  struct elx_driver_args_s *driver_buf;
 
   if (tc_sz < sizeof(struct elx_test_case_s)) {
     err_exit("test case is invalid: too small!\n");
@@ -117,7 +119,29 @@ char *serialize_tc(char *tc_buf, size_t tc_sz)
       rem_sz -= (sizeof(struct elx_app_smc_args_s) + curr_tlv->length - sizeof(uint64_t));
     }
   }
-  return (char *)final_buf;
+
+  driver_buf = (struct elx_driver_args_s *)malloc(sizeof(struct elx_driver_args_s));
+  if (!driver_buf) {
+    err_exit("can't allocate driver_buf!\n");
+  }
+  driver_buf->num_of_args = tc->num_of_args;
+  driver_buf->args = final_buf;
+  return driver_buf;
+}
+
+void call_elx_driver(void *driver_buf)
+{
+  int cmd = QTEE_SMC_FUZZING;
+  int elx_fd;
+  int ioctl_ret = 0;
+
+  elx_fd = open("/dev/elx_fuzzer", 0);
+  if (elx_fd < 0)
+    err_exit ("Can't open /dev/elx_fuzzer\n");
+
+  ioctl_ret = ioctl(elx_fd, cmd, (uint64_t)driver_buf);
+  printf("ioctl_ret = %d\n", ioctl_ret);
+  return;
 }
 
 void start_fuzzing(int tc_fd, int mutate)
@@ -143,10 +167,8 @@ void start_fuzzing(int tc_fd, int mutate)
     /** Parse the test case and fill the buffer needed by the driver.
      ** Then, pass it to the driver. If no crash, mutate it, save and retry
      **/
-    driver_buf = serialize_tc(tc_buf, tc_sz);
-    if (driver_buf != 0) {
-      /** call the driver **/
-    }
+    driver_buf = get_driver_buf(tc_buf, tc_sz);
+    call_elx_driver(driver_buf);
     free(driver_buf);
     //mutate_tc(tc_buf, tc_sz);
   } while (mutate > 0);
