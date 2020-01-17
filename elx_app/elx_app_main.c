@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "test_case_engine.h"
+#include "elx_err.h"
 
 void help(void)
 {

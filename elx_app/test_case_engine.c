@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "test_case_engine.h"
+#include "elx_err.h"
 
 int get_tc(const char *filename)
 {
@@ -47,19 +48,16 @@ uint64_t parse_tlv_buf(struct elx_app_smc_args_s *tlv, uint64_t rem_sz)
 {
   char *buf;
   if (!tlv) {
-    printf("null pointer caught while parsing tlv\n");
-    exit(0);
+    err_exit("null pointer caught while parsing tlv.\n");
   }
 
   if (tlv->length > MAX_BUF_SIZE || tlv->length > rem_sz) {
-    printf("can't allocate more than 16 pages!\n");
-    exit(0);
+    err_exit("can't allocate more than 16 pages!\n");
   }
 
   buf = (char *)malloc(tlv->length);
   if (!buf) {
-    printf("Out of memory: can't parse tlv\n");
-    exit(0);
+    err_exit("Out of memory: can't parse tlv.\n");
   }
   memcpy(buf, (void *)tlv->value, tlv->length);
   return (uint64_t)buf;
@@ -73,39 +71,33 @@ char *serialize_tc(char *tc_buf, size_t tc_sz)
   struct elx_app_smc_args_s *curr_tlv;
 
   if (tc_sz < sizeof(struct elx_test_case_s)) {
-    printf("test case is invalid: too small!\n");
-    exit(0);
+    err_exit("test case is invalid: too small!\n");
   }
 
   tc = (struct elx_test_case_s *)tc_buf;
 
   if (check_magic(tc)) {
-    printf("test case is invalid: wrong magic value!\n");
-    exit(0);
+    err_exit("test case is invalid: wrong magic value!\n");
   }
 
   if (tc->num_of_args > MAX_ELX_SCM_ARGS) {
-    printf("test case is invalid: too many arguments!\n");
-    exit(0);
+    err_exit("test case is invalid: too many arguments!\n");
   }
 
   if (tc->num_of_args == 0) {
-    printf("test case is invalid: zero arguments!\n");
-    exit(0);
+    err_exit("test case is invalid: zero arguments!\n");
   }
 
   args_sz = tc_sz - sizeof(tc->tc_magic) - sizeof(tc->num_of_args);
   rem_sz = args_sz;
 
   if (args_sz < tc->num_of_args * sizeof(struct elx_app_smc_args_s)) {
-    printf("test case is invalid: args_size is less that minimum allowed\n");
-    exit(0);
+    err_exit("test case is invalid: args_size is less that minimum allowed\n");
   }
 
   final_buf = (uint64_t *)malloc(tc->num_of_args * sizeof(uint64_t) * 2);
   if (!final_buf) {
-    printf("Out of memory!\n");
-    exit(0);
+    err_exit("Out of memory!\n");
   }
 
   curr_tlv = (struct elx_app_smc_args_s *)(tc->args);
@@ -133,25 +125,19 @@ void start_fuzzing(int tc_fd, int mutate)
   size_t tc_sz;
   char *tc_buf;
   char *driver_buf;
-  int read_retried = 0;
 
 
   tc_sz = get_fsize(tc_fd);
   if (!tc_sz) {
-    printf("test case is empty? can't do fuzzing with an empty test case\n");
-    return;
+    err_exit("test case is empty? can't do fuzzing with an empty test case\n");
   }
 
   tc_buf = (char *)malloc(tc_sz);
   if (!tc_fd) {
-    printf("test case too large!\n");
-    return;
+    err_exit("test case too large!\n");
   }
 
-  while (read(tc_fd, tc_buf, tc_sz) != tc_sz && !read_retried) {
-    printf("reading the test case failed, trying once more...\n");
-    read_retried = 1;
-  }
+  read(tc_fd, tc_buf, tc_sz);
 
   do {
     /** Parse the test case and fill the buffer needed by the driver.
